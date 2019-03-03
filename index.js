@@ -34,22 +34,23 @@ function fresh (reqHeaders, resHeaders) {
   // fields
   var modifiedSince = reqHeaders['if-modified-since']
   var noneMatch = reqHeaders['if-none-match']
+  var range = reqHeaders['if-range']
 
   // unconditional request
-  if (!modifiedSince && !noneMatch) {
+  if (!modifiedSince && !noneMatch && !range) {
     return false
   }
 
   // Always return stale when Cache-Control: no-cache
   // to support end-to-end reload requests
   // https://tools.ietf.org/html/rfc2616#section-14.9.4
-  var cacheControl = reqHeaders['cache-control']
-  if (cacheControl && CACHE_CONTROL_NO_CACHE_REGEXP.test(cacheControl)) {
-    return false
-  }
+  // var cacheControl = reqHeaders['cache-control']
+  // if (cacheControl && CACHE_CONTROL_NO_CACHE_REGEXP.test(cacheControl)) {
+  //   return false
+  // }
 
   // if-none-match
-  if (noneMatch && noneMatch !== '*') {
+  if ((noneMatch && noneMatch !== '*') || (range && range.charCodeAt(0)==='"')) {
     var etag = resHeaders['etag']
 
     if (!etag) {
@@ -57,7 +58,7 @@ function fresh (reqHeaders, resHeaders) {
     }
 
     var etagStale = true
-    var matches = parseTokenList(noneMatch)
+    var matches = parseTokenList(noneMatch) || parseTokenList(range)
     for (var i = 0; i < matches.length; i++) {
       var match = matches[i]
       if (match === etag || match === 'W/' + etag || 'W/' + match === etag) {
